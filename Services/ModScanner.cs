@@ -10,7 +10,8 @@ public sealed record InstalledMod(
     string? ModId,
     string Name,
     string? Version,
-    IReadOnlyDictionary<string, string> Dependencies)
+    IReadOnlyDictionary<string, string> Dependencies,
+    string? Description = null)
 {
     public string FileName => System.IO.Path.GetFileName(Path);
     public SemVer? SemVersion => SemVer.Parse(Version);
@@ -76,11 +77,38 @@ public static class ModScanner
                     deps[p.Name] = p.Value.ToString();
 
             var modId = Get("modid")?.ToLowerInvariant();
-            return new InstalledMod(path, modId, Get("name") ?? modId ?? System.IO.Path.GetFileName(path), Get("version"), deps);
+            return new InstalledMod(path, modId, Get("name") ?? modId ?? System.IO.Path.GetFileName(path), Get("version"), deps, Get("description"));
         }
         catch
         {
             return Unknown(path);
+        }
+    }
+
+    /// <summary>Bytes of the mod's bundled modicon.png, if it has one.</summary>
+    public static byte[]? ReadIcon(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                var file = System.IO.Path.Combine(path, "modicon.png");
+                return File.Exists(file) ? File.ReadAllBytes(file) : null;
+            }
+
+            if (!path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) return null;
+            using var zip = ZipFile.OpenRead(path);
+            var entry = zip.Entries.FirstOrDefault(e =>
+                e.FullName.Equals("modicon.png", StringComparison.OrdinalIgnoreCase));
+            if (entry is null) return null;
+
+            using var ms = new MemoryStream();
+            using (var s = entry.Open()) s.CopyTo(ms);
+            return ms.ToArray();
+        }
+        catch
+        {
+            return null;
         }
     }
 

@@ -22,6 +22,7 @@ public sealed class ModDbMod
     [JsonProperty("name")] public string? Name { get; set; }
     [JsonProperty("author")] public string? Author { get; set; }
     [JsonProperty("urlalias")] public string? UrlAlias { get; set; }
+    [JsonProperty("logofile")] public string? LogoFile { get; set; }
     [JsonProperty("releases")] public List<ModDbRelease> Releases { get; set; } = [];
 
     public string PageUrl => string.IsNullOrEmpty(UrlAlias)
@@ -40,10 +41,31 @@ public sealed class ModDbMod
             .FirstOrDefault();
 }
 
+/// <summary>One entry from /api/mods: lightweight info for every mod on the ModDB.</summary>
+public sealed class ModDbListEntry
+{
+    [JsonProperty("modid")] public int ModId { get; set; }
+    [JsonProperty("assetid")] public int AssetId { get; set; }
+    [JsonProperty("name")] public string? Name { get; set; }
+    [JsonProperty("summary")] public string? Summary { get; set; }
+    [JsonProperty("author")] public string? Author { get; set; }
+    [JsonProperty("logo")] public string? Logo { get; set; }
+    [JsonProperty("downloads")] public int Downloads { get; set; }
+    [JsonProperty("follows")] public int Follows { get; set; }
+    [JsonProperty("trendingpoints")] public int TrendingPoints { get; set; }
+    [JsonProperty("side")] public string? Side { get; set; }
+    [JsonProperty("type")] public string? Type { get; set; }
+    [JsonProperty("urlalias")] public string? UrlAlias { get; set; }
+    [JsonProperty("lastreleased")] public string? LastReleased { get; set; }
+    [JsonProperty("modidstrs")] public List<string> ModIdStrs { get; set; } = [];
+    [JsonProperty("tags")] public List<string> Tags { get; set; } = [];
+}
+
 public sealed class ModDbClient : IDisposable
 {
     private const string BaseUrl = "https://mods.vintagestory.at/api/";
     private readonly HttpClient _http;
+    private Task<IReadOnlyList<ModDbListEntry>>? _modList;
 
     private sealed class ModResponse
     {
@@ -51,11 +73,40 @@ public sealed class ModDbClient : IDisposable
         [JsonProperty("mod")] public ModDbMod? Mod { get; set; }
     }
 
+    private sealed class ModListResponse
+    {
+        [JsonProperty("mods")] public List<ModDbListEntry> Mods { get; set; } = [];
+    }
+
     public ModDbClient()
     {
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        var handler = new HttpClientHandler { AutomaticDecompression = System.Net.DecompressionMethods.All };
+        _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(60) };
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("VSModManager/0.1");
     }
+
+    /// <summary>
+    /// Every mod on the ModDB (~4 MB). Fetched once per session and shared;
+    /// a failed fetch is forgotten so the next call retries.
+    /// </summary>
+    public Task<IReadOnlyList<ModDbListEntry>> GetModListAsync() => _modList ??= FetchModListAsync();
+
+    private async Task<IReadOnlyList<ModDbListEntry>> FetchModListAsync()
+    {
+        try
+        {
+            var json = await _http.GetStringAsync(BaseUrl + "mods");
+            return JsonConvert.DeserializeObject<ModListResponse>(json)?.Mods ?? [];
+        }
+        catch
+        {
+            _modList = null;
+            throw;
+        }
+    }
+
+    public Task<byte[]> GetBytesAsync(string url, CancellationToken ct = default) =>
+        _http.GetByteArrayAsync(url, ct);
 
     /// <summary>Returns null when the mod isn't on the ModDB (API answers statuscode "404").</summary>
     public async Task<ModDbMod?> GetModAsync(string modId, CancellationToken ct = default)

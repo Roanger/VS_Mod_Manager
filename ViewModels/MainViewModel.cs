@@ -11,6 +11,7 @@ public sealed partial class MainViewModel : ObservableObject
     private const int MaxParallelChecks = 6;
 
     private readonly ModDbClient _client = new();
+    private readonly IconCache _icons;
 
     public GamePaths Paths { get; private set; }
     public ModUpdater Updater { get; private set; }
@@ -62,7 +63,8 @@ public sealed partial class MainViewModel : ObservableObject
         {
             bool text = terms.All(t =>
                 m.Name.Contains(t, StringComparison.OrdinalIgnoreCase) ||
-                (m.ModId?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false));
+                (m.ModId?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (m.Author?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false));
 
             bool filter = FilterIndex switch
             {
@@ -97,6 +99,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public MainViewModel()
     {
+        _icons = new IconCache(_client);
         Paths = new GamePaths(AppSettings.Load());
         Updater = new ModUpdater(Paths, _client);
         Settings = new ClientSettings(Paths);
@@ -202,6 +205,11 @@ public sealed partial class MainViewModel : ObservableObject
             }
             RecheckDependencies();
             SyncActiveProfile();
+
+            // Icons and summaries fill in on their own; the list is usable without them.
+            var listing = _client.GetModListAsync();
+            foreach (var item in Mods)
+                _ = item.LoadDetailsAsync(_icons, listing);
 
             StatusMessage = $"Checking {Mods.Count} mods against the ModDB…";
             using var gate = new SemaphoreSlim(MaxParallelChecks);
@@ -447,6 +455,7 @@ public sealed partial class MainViewModel : ObservableObject
             var target = await Updater.InstallAsync(release, []);
             var item = new ModItemViewModel(this, [ModScanner.ReadZip(target)]);
             InsertSorted(item);
+            _ = item.LoadDetailsAsync(_icons, _client.GetModListAsync());
             await item.CheckAsync(_client, Paths.GameVersion);
 
             OnItemChanged();

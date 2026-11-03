@@ -89,6 +89,46 @@ public sealed partial class ModItemViewModel : ObservableObject
     [ObservableProperty]
     private bool _isInstallingDependencies;
 
+    [ObservableProperty] private Avalonia.Media.Imaging.Bitmap? _icon;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSummary))]
+    private string? _summary;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ByAuthor))]
+    private string? _author;
+
+    public bool HasSummary => !string.IsNullOrWhiteSpace(Summary);
+    public string ByAuthor => string.IsNullOrEmpty(Author) ? "" : $"  ·  by {Author}";
+
+    /// <summary>
+    /// Fills icon, summary and author. Local data (bundled modicon.png, modinfo
+    /// description) is used first; the ModDB listing fills whatever is missing.
+    /// </summary>
+    public async Task LoadDetailsAsync(IconCache icons, Task<IReadOnlyList<ModDbListEntry>> listing)
+    {
+        Summary ??= Primary.Description;
+        Icon ??= await icons.FromLocalAsync(Primary.Path);
+
+        if (ModId is null) return;
+
+        ModDbListEntry? entry = null;
+        try
+        {
+            entry = (await listing).FirstOrDefault(e =>
+                e.ModIdStrs.Contains(ModId, StringComparer.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            // ModDB listing unavailable; keep whatever local details we have.
+        }
+
+        if (!string.IsNullOrWhiteSpace(entry?.Summary)) Summary = entry.Summary;
+        Author = entry?.Author ?? Remote?.Author ?? Author;
+        Icon ??= await icons.FromUrlAsync(entry?.Logo ?? Remote?.LogoFile);
+    }
+
     /// <summary>Whether the row passes the current search and filter.</summary>
     [ObservableProperty]
     private bool _matchesFilter = true;

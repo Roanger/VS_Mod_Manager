@@ -73,7 +73,7 @@
     <Border DockPanel.Dock="Top" Padding="16,8,16,0">
       <Grid ColumnDefinitions="*,Auto,Auto">
         <TextBox Classes="clearButton" Text="{Binding SearchText}"
-                 Watermark="Search mods by name or ID…" />
+                 Watermark="Search mods by name, ID or author…" />
         <ComboBox Grid.Column="1" Margin="8,0,0,0" MinWidth="130"
                   ItemsSource="{Binding FilterOptions}" SelectedIndex="{Binding FilterIndex}"
                   ToolTip.Tip="Updates: newer version available · Problems: dependency issues, duplicates or errors" />
@@ -103,15 +103,25 @@
               <Grid ColumnDefinitions="44,*,100,100,220,300">
                 <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"
                           ToolTip.Tip="Enable or disable this mod (same list as the in-game mod screen)" />
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" ToolTip.Tip="{Binding FileNames}"
-                            Opacity="{Binding RowOpacity}">
+                <Grid Grid.Column="1" ColumnDefinitions="Auto,*" Opacity="{Binding RowOpacity}">
+                <Border Width="48" Height="48" CornerRadius="6" ClipToBounds="True"
+                        Background="#18FFFFFF" VerticalAlignment="Top" Margin="0,2,12,0">
+                  <Image Source="{Binding Icon}" Stretch="UniformToFill" />
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" ToolTip.Tip="{Binding FileNames}">
                   <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Text="{Binding ModId}" Foreground="Gray" FontSize="12" />
+                  <TextBlock Foreground="Gray" FontSize="12" TextTrimming="CharacterEllipsis">
+                    <Run Text="{Binding ModId}" /><Run Text="{Binding ByAuthor}" />
+                  </TextBlock>
+                  <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="#B0B0B0"
+                             TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                             IsVisible="{Binding HasSummary}" Margin="0,2,0,0" />
                   <TextBlock Text="{Binding DuplicateText}" Foreground="Orange" FontSize="12"
                              IsVisible="{Binding IsDuplicate}" />
                   <TextBlock Text="{Binding DependencyText}" Foreground="IndianRed" FontSize="12"
                              TextWrapping="Wrap" IsVisible="{Binding HasDependencyIssues}" />
                 </StackPanel>
+                </Grid>
                 <TextBlock Grid.Column="2" Text="{Binding InstalledVersion}" VerticalAlignment="Center"
                            Opacity="{Binding RowOpacity}" />
                 <TextBlock Grid.Column="3" Text="{Binding LatestVersion}" VerticalAlignment="Center"
