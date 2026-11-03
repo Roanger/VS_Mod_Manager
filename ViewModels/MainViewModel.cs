@@ -28,6 +28,26 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private int _duplicateCount;
     [ObservableProperty] private int _dependencyIssueCount;
 
+    private readonly ProfileStore _profiles = ProfileStore.Load();
+    public ObservableCollection<string> ProfileNames { get; } = [];
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CreateProfileCommand))]
+    private string _newProfileName = "";
+
+    /// <summary>Bound to the profile dropdown; selecting one applies it.</summary>
+    public string? SelectedProfile
+    {
+        get => _profiles.Active;
+        set
+        {
+            if (value is null || string.Equals(value, _profiles.Active, StringComparison.OrdinalIgnoreCase)) return;
+            if (!SwitchProfile(value))
+                // Refused (e.g. game running): put the dropdown back.
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(SelectedProfile)));
+        }
+    }
+
     public string GameVersionText => Paths.GameVersion is { } v ? $"Vintage Story {v}" : "Game version not detected";
     public string ModsDir => Paths.ModsDir;
 
@@ -62,6 +82,7 @@ public sealed partial class MainViewModel : ObservableObject
                 Mods.Add(item);
             }
             RecheckDependencies();
+            InitProfiles();
 
             StatusMessage = $"Checking {Mods.Count} mods against the ModDB…";
             using var gate = new SemaphoreSlim(MaxParallelChecks);
@@ -177,9 +198,117 @@ public sealed partial class MainViewModel : ObservableObject
             return false;
         }
 
-        // Defer so the row's own flag is updated before dependencies are evaluated.
-        Avalonia.Threading.Dispatcher.UIThread.Post(RecheckDependencies);
+        // Defer so the row's own flag is updated first.
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            RecheckDependencies();
+            SyncActiveProfile();
+        });
         return true;
+    }
+
+    private IEnumerable<ModItemViewModel> ToggleableMods => Mods.Where(m => m.ModId is not null);
+
+    /// <summary>
+    /// On refresh: first run creates "Default" from the current state; afterwards the
+    /// active profile absorbs any changes made on the in-game mod screen.
+    /// </summary>
+    private void InitProfiles()
+    {
+        if (_profiles.Profiles.Count == 0)
+            _profiles.Profiles.Add(new Profile { Name = ProfileStore.DefaultName });
+        if (_profiles.ActiveProfile is null)
+            _profiles.Active = _profiles.Profiles[0].Name;
+
+        ProfileNames.Clear();
+        foreach (var p in _profiles.Profiles)
+            ProfileNames.Add(p.Name);
+        OnPropertyChanged(nameof(SelectedProfile));
+
+        SyncActiveProfile();
+    }
+
+    /// <summary>Saves the current enabled/disabled state into the active profile.</summary>
+    private void SyncActiveProfile()
+    {
+        if (_profiles.ActiveProfile is not { } active) return;
+
+        // Remember choices for mods that aren't installed right now, in case they come back.
+        var installedIds = ToggleableMods.Select(m => m.ModId!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        active.DisabledMods.RemoveWhere(installedIds.Contains);
+        active.DisabledMods.UnionWith(ToggleableMods.Where(m => !m.IsEnabled).Select(m => m.ModId!));
+
+        TrySaveProfiles();
+    }
+
+    private bool SwitchProfile(string name)
+    {
+        if (_profiles.Find(name) is not { } profile) return false;
+
+        try
+        {
+            Settings.ApplyProfile(ToggleableMods.Select(m => (IReadOnlyList<InstalledMod>)m.Files), profile.DisabledMods);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+            return false;
+        }
+
+        foreach (var item in ToggleableMods)
+            item.SetEnabledSilently(!profile.DisabledMods.Contains(item.ModId!));
+
+        _profiles.Active = profile.Name;
+        TrySaveProfiles();
+        OnPropertyChanged(nameof(SelectedProfile));
+        RecheckDependencies();
+
+        var off = ToggleableMods.Count(m => !m.IsEnabled);
+        StatusMessage = $"Switched to profile \"{profile.Name}\" ({off} mod(s) disabled).";
+        return true;
+    }
+
+    private bool CanCreateProfile =>
+        !string.IsNullOrWhiteSpace(NewProfileName) && _profiles.Find(NewProfileName.Trim()) is null;
+
+    /// <summary>Creates a profile from the current state and makes it active.</summary>
+    [RelayCommand(CanExecute = nameof(CanCreateProfile))]
+    private void CreateProfile()
+    {
+        var profile = new Profile { Name = NewProfileName.Trim() };
+        _profiles.Profiles.Add(profile);
+        _profiles.Active = profile.Name;
+        SyncActiveProfile();
+
+        ProfileNames.Add(profile.Name);
+        OnPropertyChanged(nameof(SelectedProfile));
+        NewProfileName = "";
+        StatusMessage = $"Created profile \"{profile.Name}\" from the current mod setup.";
+    }
+
+    [RelayCommand]
+    private void DeleteProfile()
+    {
+        if (_profiles.ActiveProfile is not { } active) return;
+        if (_profiles.Profiles.Count == 1)
+        {
+            StatusMessage = "Can't delete the only profile.";
+            return;
+        }
+
+        var fallback = _profiles.Profiles.First(p => p != active);
+        if (!SwitchProfile(fallback.Name)) return;
+
+        _profiles.Profiles.Remove(active);
+        ProfileNames.Remove(active.Name);
+        TrySaveProfiles();
+        StatusMessage = $"Deleted profile \"{active.Name}\"; now using \"{fallback.Name}\".";
+    }
+
+    private void TrySaveProfiles()
+    {
+        try { _profiles.Save(); }
+        catch (Exception ex) { StatusMessage = "Couldn't save profiles: " + ex.Message; }
     }
 
     /// <summary>

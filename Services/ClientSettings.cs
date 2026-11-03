@@ -67,6 +67,24 @@ public sealed class ClientSettings(GamePaths paths)
     });
 
     /// <summary>
+    /// Applies a profile in one write: every installed mod is disabled if its modid
+    /// is in <paramref name="disabledIds"/>, enabled otherwise. Entries for mods that
+    /// aren't installed are left alone.
+    /// </summary>
+    /// <param name="installed">Each installed mod's copies, newest first.</param>
+    public void ApplyProfile(IEnumerable<IReadOnlyList<InstalledMod>> installed, IReadOnlySet<string> disabledIds) => Edit(set =>
+    {
+        foreach (var copies in installed)
+        {
+            var id = copies[0].ModId!;
+            set.RemoveWhere(e => e.Equals(id, StringComparison.OrdinalIgnoreCase)
+                              || e.StartsWith(id + "@", StringComparison.OrdinalIgnoreCase));
+            if (disabledIds.Contains(id))
+                foreach (var c in copies) set.Add(Key(c));
+        }
+    });
+
+    /// <summary>
     /// After an update or duplicate cleanup: drop entries for files that are gone,
     /// and carry a disabled flag over to the version that replaced them.
     /// </summary>
