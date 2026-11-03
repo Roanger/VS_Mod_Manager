@@ -89,6 +89,13 @@ public sealed partial class ModItemViewModel : ObservableObject
     [ObservableProperty]
     private bool _isInstallingDependencies;
 
+    /// <summary>Whether the row passes the current search and filter.</summary>
+    [ObservableProperty]
+    private bool _matchesFilter = true;
+
+    /// <summary>Anything needing attention: dependency trouble, duplicates, or a failed check/update.</summary>
+    public bool HasProblem => HasDependencyIssues || IsDuplicate || Status == ModStatus.Error;
+
     public InstalledMod Primary => Files[0];
     public string? ModId => Primary.ModId;
     public string Name => Remote?.Name ?? Primary.Name;

@@ -69,9 +69,22 @@
       </Grid>
     </Border>
 
+    <!-- Search and filter -->
+    <Border DockPanel.Dock="Top" Padding="16,8,16,0">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <TextBox Classes="clearButton" Text="{Binding SearchText}"
+                 Watermark="Search mods by name or ID…" />
+        <ComboBox Grid.Column="1" Margin="8,0,0,0" MinWidth="130"
+                  ItemsSource="{Binding FilterOptions}" SelectedIndex="{Binding FilterIndex}"
+                  ToolTip.Tip="Updates: newer version available · Problems: dependency issues, duplicates or errors" />
+        <TextBlock Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray"
+                   Text="{Binding VisibleCountText}" />
+      </Grid>
+    </Border>
+
     <!-- Column headers -->
     <Border DockPanel.Dock="Top" Classes="row">
-      <Grid ColumnDefinitions="44,*,100,100,220,290">
+      <Grid ColumnDefinitions="44,*,100,100,220,300">
         <TextBlock Classes="header" Text="On" />
         <TextBlock Classes="header" Grid.Column="1" Text="Mod" />
         <TextBlock Classes="header" Grid.Column="2" Text="Installed" />
@@ -85,7 +98,7 @@
       <ItemsControl ItemsSource="{Binding Mods}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ModItemViewModel">
-            <Border Classes="row">
+            <Border Classes="row" IsVisible="{Binding MatchesFilter}">
              <StackPanel>
               <Grid ColumnDefinitions="44,*,100,100,220,300">
                 <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"

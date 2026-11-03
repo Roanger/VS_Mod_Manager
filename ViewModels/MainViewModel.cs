@@ -44,6 +44,41 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(CreateProfileCommand))]
     private string _newProfileName = "";
 
+    public static IReadOnlyList<string> FilterOptions { get; } = ["All", "Updates", "Problems", "Disabled"];
+
+    [ObservableProperty] private string _searchText = "";
+    [ObservableProperty] private int _filterIndex;
+    [ObservableProperty] private string _visibleCountText = "";
+
+    partial void OnSearchTextChanged(string value) => ApplyFilter();
+    partial void OnFilterIndexChanged(int value) => ApplyFilter();
+
+    /// <summary>Re-evaluates every row against the search box and filter dropdown.</summary>
+    public void ApplyFilter()
+    {
+        var terms = SearchText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var m in Mods)
+        {
+            bool text = terms.All(t =>
+                m.Name.Contains(t, StringComparison.OrdinalIgnoreCase) ||
+                (m.ModId?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false));
+
+            bool filter = FilterIndex switch
+            {
+                1 => m.CanUpdate,
+                2 => m.HasProblem,
+                3 => !m.IsEnabled,
+                _ => true,
+            };
+
+            m.MatchesFilter = text && filter;
+        }
+
+        int shown = Mods.Count(m => m.MatchesFilter);
+        VisibleCountText = shown == Mods.Count ? "" : $"Showing {shown} of {Mods.Count}";
+    }
+
     /// <summary>Bound to the profile dropdown; selecting one applies it.</summary>
     public string? SelectedProfile
     {
@@ -245,6 +280,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         UpdatesAvailable = Mods.Count(m => m.CanUpdate);
         DuplicateCount = Mods.Count(m => m.IsDuplicate);
+        ApplyFilter();
     }
 
     public void RecheckDependencies()
@@ -260,6 +296,7 @@ public sealed partial class MainViewModel : ObservableObject
                 : [];
 
         DependencyIssueCount = Mods.Count(m => m.HasDependencyIssues);
+        ApplyFilter();
     }
 
     public ModItemViewModel? FindMod(string modId) =>
