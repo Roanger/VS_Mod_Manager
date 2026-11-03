@@ -1,11 +1,16 @@
 # VS Mod Manager
 
-A desktop mod manager for [Vintage Story](https://www.vintagestory.at/), in the spirit of Gale and Vortex. It shows which of your mods have updates on the [official ModDB](https://mods.vintagestory.at/), updates them with one click, and manages which mods are enabled, all without fighting the game's own settings.
+A desktop mod manager for [Vintage Story](https://www.vintagestory.at/), in the spirit of Gale and Vortex. It shows which of your mods have updates on the [official ModDB](https://mods.vintagestory.at/), updates them with one click, lets you browse and install new mods, and manages which mods are enabled, all without fighting the game's own settings.
 
-![VS Mod Manager](docs/screenshot.png)
+![Installed mods](docs/screenshot.png)
+
+![Browsing the ModDB](docs/browse.png)
 
 ## Features
 
+- **Browse the ModDB.** Search all 9,000+ mods by name, author, ID or description, filter by category, sort by trending, downloads or recent updates, and install with one click. Dependencies come along automatically.
+- **Icons and summaries.** Every mod shows its icon, author and a short description, from the mod itself or the ModDB.
+- **Search and filter.** Find installed mods by name, ID or author, or narrow the list to mods with updates, problems, or that are disabled.
 - **Update checks.** Every installed mod is looked up on the ModDB by its `modid`, and the newest release compatible with your game version is shown next to what you have.
 - **One-click updates.** Update a single mod or all of them. Old files are never deleted; they're moved to a timestamped backup folder so you can roll back.
 - **What's New.** Read the changelog for every release between your version and the latest before updating.
