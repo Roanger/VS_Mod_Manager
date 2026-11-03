@@ -38,6 +38,9 @@
               <Run Text="Update All (" /><Run Text="{Binding UpdatesAvailable}" /><Run Text=")" />
             </TextBlock>
           </Button>
+          <Button Content="{Binding PlayText}" Command="{Binding PlayCommand}"
+                  Background="SeaGreen" Foreground="White" FontWeight="SemiBold" MinWidth="100"
+                  HorizontalContentAlignment="Center" />
         </StackPanel>
       </Grid>
     </Border>

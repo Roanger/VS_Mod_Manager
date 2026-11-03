@@ -28,6 +28,11 @@ public sealed class GamePaths
         return SemVer.Parse(info.ProductVersion) ?? SemVer.Parse(info.FileVersion);
     }
 
+    public string ExePath => Path.Combine(InstallDir, "Vintagestory.exe");
+
     public static bool IsGameRunning() =>
         Process.GetProcessesByName("Vintagestory").Length > 0;
+
+    public void LaunchGame() =>
+        Process.Start(new ProcessStartInfo(ExePath) { WorkingDirectory = InstallDir, UseShellExecute = true });
 }

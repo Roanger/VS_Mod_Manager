@@ -28,6 +28,15 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private int _duplicateCount;
     [ObservableProperty] private int _dependencyIssueCount;
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PlayCommand))]
+    [NotifyPropertyChangedFor(nameof(PlayText))]
+    private bool _isGameRunning;
+
+    public string PlayText => IsGameRunning ? "Running…" : "▶ Play";
+
+    private readonly Avalonia.Threading.DispatcherTimer _gameWatch = new() { Interval = TimeSpan.FromSeconds(2) };
+
     private readonly ProfileStore _profiles = ProfileStore.Load();
     public ObservableCollection<string> ProfileNames { get; } = [];
 
@@ -55,6 +64,46 @@ public sealed partial class MainViewModel : ObservableObject
     {
         Updater = new ModUpdater(Paths, _client);
         Settings = new ClientSettings(Paths);
+
+        IsGameRunning = GamePaths.IsGameRunning();
+        _gameWatch.Tick += (_, _) => WatchGame();
+        _gameWatch.Start();
+    }
+
+    private void WatchGame()
+    {
+        bool running = GamePaths.IsGameRunning();
+        if (running == IsGameRunning) return;
+
+        IsGameRunning = running;
+        if (running)
+            StatusMessage = "Vintage Story is running; mod changes are paused until it closes.";
+        // The game may have changed mods or disabledMods while open.
+        else if (RefreshCommand.CanExecute(null))
+            RefreshCommand.Execute(null);
+    }
+
+    private bool CanPlay => !IsGameRunning;
+
+    [RelayCommand(CanExecute = nameof(CanPlay))]
+    private void Play()
+    {
+        if (!File.Exists(Paths.ExePath))
+        {
+            StatusMessage = $"Couldn't find {Paths.ExePath}.";
+            return;
+        }
+
+        try
+        {
+            Paths.LaunchGame();
+            IsGameRunning = true;
+            StatusMessage = "Launching Vintage Story…";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Couldn't launch the game: " + ex.Message;
+        }
     }
 
     public Task InitializeAsync() => RefreshAsync();
