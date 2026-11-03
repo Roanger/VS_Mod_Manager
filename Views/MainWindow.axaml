@@ -69,93 +69,172 @@
       </Grid>
     </Border>
 
-    <!-- Search and filter -->
-    <Border DockPanel.Dock="Top" Padding="16,8,16,0">
-      <Grid ColumnDefinitions="*,Auto,Auto">
-        <TextBox Classes="clearButton" Text="{Binding SearchText}"
-                 Watermark="Search mods by name, ID or author…" />
-        <ComboBox Grid.Column="1" Margin="8,0,0,0" MinWidth="130"
-                  ItemsSource="{Binding FilterOptions}" SelectedIndex="{Binding FilterIndex}"
-                  ToolTip.Tip="Updates: newer version available · Problems: dependency issues, duplicates or errors" />
-        <TextBlock Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray"
-                   Text="{Binding VisibleCountText}" />
-      </Grid>
-    </Border>
+    <TabControl SelectedIndex="{Binding SelectedTab}" Padding="0" Margin="8,4,8,0">
+      <TabControl.Styles>
+        <Style Selector="TabItem">
+          <Setter Property="FontSize" Value="15" />
+          <Setter Property="MinHeight" Value="36" />
+        </Style>
+      </TabControl.Styles>
 
-    <!-- Column headers -->
-    <Border DockPanel.Dock="Top" Classes="row">
-      <Grid ColumnDefinitions="44,*,100,100,220,300">
-        <TextBlock Classes="header" Text="On" />
-        <TextBlock Classes="header" Grid.Column="1" Text="Mod" />
-        <TextBlock Classes="header" Grid.Column="2" Text="Installed" />
-        <TextBlock Classes="header" Grid.Column="3" Text="Latest" />
-        <TextBlock Classes="header" Grid.Column="4" Text="Status" />
-      </Grid>
-    </Border>
+      <TabItem Header="Installed">
+       <DockPanel>
+          <!-- Search and filter -->
+          <Border DockPanel.Dock="Top" Padding="16,8,16,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+              <TextBox Classes="clearButton" Text="{Binding SearchText}"
+                       Watermark="Search mods by name, ID or author…" />
+              <ComboBox Grid.Column="1" Margin="8,0,0,0" MinWidth="130"
+                        ItemsSource="{Binding FilterOptions}" SelectedIndex="{Binding FilterIndex}"
+                        ToolTip.Tip="Updates: newer version available · Problems: dependency issues, duplicates or errors" />
+              <TextBlock Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray"
+                         Text="{Binding VisibleCountText}" />
+            </Grid>
+          </Border>
+      
+          <!-- Column headers -->
+          <Border DockPanel.Dock="Top" Classes="row">
+            <Grid ColumnDefinitions="44,*,100,100,220,300">
+              <TextBlock Classes="header" Text="On" />
+              <TextBlock Classes="header" Grid.Column="1" Text="Mod" />
+              <TextBlock Classes="header" Grid.Column="2" Text="Installed" />
+              <TextBlock Classes="header" Grid.Column="3" Text="Latest" />
+              <TextBlock Classes="header" Grid.Column="4" Text="Status" />
+            </Grid>
+          </Border>
+      
+          <!-- Mod list -->
+          <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Mods}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ModItemViewModel">
+                  <Border Classes="row" IsVisible="{Binding MatchesFilter}">
+                   <StackPanel>
+                    <Grid ColumnDefinitions="44,*,100,100,220,300">
+                      <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"
+                                ToolTip.Tip="Enable or disable this mod (same list as the in-game mod screen)" />
+                      <Grid Grid.Column="1" ColumnDefinitions="Auto,*" Opacity="{Binding RowOpacity}">
+                      <Border Width="48" Height="48" CornerRadius="6" ClipToBounds="True"
+                              Background="#18FFFFFF" VerticalAlignment="Top" Margin="0,2,12,0">
+                        <Image Source="{Binding Icon}" Stretch="UniformToFill" />
+                      </Border>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" ToolTip.Tip="{Binding FileNames}">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Foreground="Gray" FontSize="12" TextTrimming="CharacterEllipsis">
+                          <Run Text="{Binding ModId}" /><Run Text="{Binding ByAuthor}" />
+                        </TextBlock>
+                        <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="#B0B0B0"
+                                   TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding HasSummary}" Margin="0,2,0,0" />
+                        <TextBlock Text="{Binding DuplicateText}" Foreground="Orange" FontSize="12"
+                                   IsVisible="{Binding IsDuplicate}" />
+                        <TextBlock Text="{Binding DependencyText}" Foreground="IndianRed" FontSize="12"
+                                   TextWrapping="Wrap" IsVisible="{Binding HasDependencyIssues}" />
+                      </StackPanel>
+                      </Grid>
+                      <TextBlock Grid.Column="2" Text="{Binding InstalledVersion}" VerticalAlignment="Center"
+                                 Opacity="{Binding RowOpacity}" />
+                      <TextBlock Grid.Column="3" Text="{Binding LatestVersion}" VerticalAlignment="Center"
+                                 Opacity="{Binding RowOpacity}" />
+                      <TextBlock Grid.Column="4" Opacity="{Binding RowOpacity}" Text="{Binding StatusText}" Foreground="{Binding StatusBrush}"
+                                 VerticalAlignment="Center" TextWrapping="Wrap" />
+                      <WrapPanel Grid.Column="5" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <WrapPanel.Styles>
+                          <Style Selector="Button"><Setter Property="Margin" Value="3" /></Style>
+                        </WrapPanel.Styles>
+                        <Button Content="Fix Dependencies" Command="{Binding FixDependenciesCommand}"
+                                IsVisible="{Binding HasFixableDependencies}"
+                                IsEnabled="{Binding !IsInstallingDependencies}" />
+                        <Button Content="Fix Duplicates" Command="{Binding RemoveDuplicatesCommand}"
+                                IsVisible="{Binding IsDuplicate}" />
+                        <Button Content="{Binding ChangelogButtonText}" Command="{Binding ToggleChangelogCommand}"
+                                IsVisible="{Binding HasChangelog}" />
+                        <Button Content="Page" Command="{Binding OpenPageCommand}"
+                                IsVisible="{Binding HasPage}" />
+                        <Button Content="Update" Classes="accent" Command="{Binding UpdateCommand}"
+                                IsVisible="{Binding CanUpdate}" />
+                      </WrapPanel>
+                    </Grid>
+                    <Border IsVisible="{Binding IsChangelogOpen}" Margin="44,8,0,4" Padding="12,10"
+                            Background="#14FFFFFF" CornerRadius="6" MaxHeight="320">
+                      <ScrollViewer>
+                        <SelectableTextBlock Text="{Binding ChangelogText}" TextWrapping="Wrap" FontSize="13" />
+                      </ScrollViewer>
+                    </Border>
+                   </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+       </DockPanel>
+      </TabItem>
 
-    <!-- Mod list -->
-    <ScrollViewer>
-      <ItemsControl ItemsSource="{Binding Mods}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:ModItemViewModel">
-            <Border Classes="row" IsVisible="{Binding MatchesFilter}">
-             <StackPanel>
-              <Grid ColumnDefinitions="44,*,100,100,220,300">
-                <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"
-                          ToolTip.Tip="Enable or disable this mod (same list as the in-game mod screen)" />
-                <Grid Grid.Column="1" ColumnDefinitions="Auto,*" Opacity="{Binding RowOpacity}">
-                <Border Width="48" Height="48" CornerRadius="6" ClipToBounds="True"
-                        Background="#18FFFFFF" VerticalAlignment="Top" Margin="0,2,12,0">
-                  <Image Source="{Binding Icon}" Stretch="UniformToFill" />
-                </Border>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" ToolTip.Tip="{Binding FileNames}">
-                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Foreground="Gray" FontSize="12" TextTrimming="CharacterEllipsis">
-                    <Run Text="{Binding ModId}" /><Run Text="{Binding ByAuthor}" />
-                  </TextBlock>
-                  <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="#B0B0B0"
-                             TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
-                             IsVisible="{Binding HasSummary}" Margin="0,2,0,0" />
-                  <TextBlock Text="{Binding DuplicateText}" Foreground="Orange" FontSize="12"
-                             IsVisible="{Binding IsDuplicate}" />
-                  <TextBlock Text="{Binding DependencyText}" Foreground="IndianRed" FontSize="12"
-                             TextWrapping="Wrap" IsVisible="{Binding HasDependencyIssues}" />
-                </StackPanel>
-                </Grid>
-                <TextBlock Grid.Column="2" Text="{Binding InstalledVersion}" VerticalAlignment="Center"
-                           Opacity="{Binding RowOpacity}" />
-                <TextBlock Grid.Column="3" Text="{Binding LatestVersion}" VerticalAlignment="Center"
-                           Opacity="{Binding RowOpacity}" />
-                <TextBlock Grid.Column="4" Opacity="{Binding RowOpacity}" Text="{Binding StatusText}" Foreground="{Binding StatusBrush}"
-                           VerticalAlignment="Center" TextWrapping="Wrap" />
-                <WrapPanel Grid.Column="5" HorizontalAlignment="Right" VerticalAlignment="Center">
-                  <WrapPanel.Styles>
-                    <Style Selector="Button"><Setter Property="Margin" Value="3" /></Style>
-                  </WrapPanel.Styles>
-                  <Button Content="Fix Dependencies" Command="{Binding FixDependenciesCommand}"
-                          IsVisible="{Binding HasFixableDependencies}"
-                          IsEnabled="{Binding !IsInstallingDependencies}" />
-                  <Button Content="Fix Duplicates" Command="{Binding RemoveDuplicatesCommand}"
-                          IsVisible="{Binding IsDuplicate}" />
-                  <Button Content="{Binding ChangelogButtonText}" Command="{Binding ToggleChangelogCommand}"
-                          IsVisible="{Binding HasChangelog}" />
-                  <Button Content="Page" Command="{Binding OpenPageCommand}"
-                          IsVisible="{Binding HasPage}" />
-                  <Button Content="Update" Classes="accent" Command="{Binding UpdateCommand}"
-                          IsVisible="{Binding CanUpdate}" />
-                </WrapPanel>
-              </Grid>
-              <Border IsVisible="{Binding IsChangelogOpen}" Margin="44,8,0,4" Padding="12,10"
-                      Background="#14FFFFFF" CornerRadius="6" MaxHeight="320">
-                <ScrollViewer>
-                  <SelectableTextBlock Text="{Binding ChangelogText}" TextWrapping="Wrap" FontSize="13" />
-                </ScrollViewer>
-              </Border>
-             </StackPanel>
-            </Border>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </ScrollViewer>
+      <TabItem Header="Browse ModDB">
+       <DockPanel DataContext="{Binding Browse}" x:DataType="vm:BrowseViewModel">
+        <!-- Search, category, sort -->
+        <Border DockPanel.Dock="Top" Padding="8,8,8,8">
+          <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
+            <TextBox Classes="clearButton" Text="{Binding SearchText}"
+                     Watermark="Search all mods by name, author, ID or description…" />
+            <ComboBox Grid.Column="1" Margin="8,0,0,0" MinWidth="150"
+                      ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" />
+            <ComboBox Grid.Column="2" Margin="8,0,0,0" MinWidth="150"
+                      ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortIndex}" />
+            <CheckBox Grid.Column="3" Margin="12,0,0,0" Content="Hide installed"
+                      IsChecked="{Binding HideInstalled}" />
+            <TextBlock Grid.Column="4" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray"
+                       Text="{Binding ResultText}" />
+          </Grid>
+        </Border>
+
+        <ProgressBar DockPanel.Dock="Top" IsIndeterminate="True" IsVisible="{Binding IsLoading}" Margin="8,0" />
+
+        <ScrollViewer>
+          <StackPanel>
+            <ItemsControl ItemsSource="{Binding Results}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:BrowseItemViewModel">
+                  <Border Classes="row">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Border Width="56" Height="56" CornerRadius="6" ClipToBounds="True"
+                              Background="#18FFFFFF" VerticalAlignment="Top" Margin="0,2,14,0">
+                        <Image Source="{Binding Icon}" Stretch="UniformToFill" />
+                      </Border>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Details}" Foreground="Gray" FontSize="12"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="#B0B0B0"
+                                   TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding HasSummary}" Margin="0,2,0,0" />
+                        <TextBlock Text="{Binding TagText}" FontSize="11" Foreground="#7FA7D9"
+                                   IsVisible="{Binding HasTags}" Margin="0,2,0,0" />
+                        <TextBlock Text="{Binding Note}" FontSize="12" Foreground="IndianRed"
+                                   TextWrapping="Wrap" IsVisible="{Binding HasNote}" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+                                  VerticalAlignment="Center" Margin="12,0,0,0">
+                        <TextBlock Text="✓ Installed" Foreground="MediumSeaGreen" VerticalAlignment="Center"
+                                   Margin="0,0,6,0" IsVisible="{Binding IsInstalled}" />
+                        <Button Content="Page" Command="{Binding OpenPageCommand}" />
+                        <Button Content="{Binding InstallText}" Classes="accent" MinWidth="90"
+                                HorizontalContentAlignment="Center"
+                                Command="{Binding InstallCommand}" IsEnabled="{Binding CanInstall}"
+                                IsVisible="{Binding !IsInstalled}" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="Show more" Command="{Binding ShowMoreCommand}" IsVisible="{Binding HasMore}"
+                    HorizontalAlignment="Center" Margin="0,12,0,16" MinWidth="160"
+                    HorizontalContentAlignment="Center" />
+          </StackPanel>
+        </ScrollViewer>
+       </DockPanel>
+      </TabItem>
+    </TabControl>
   </DockPanel>
 </Window>

@@ -298,7 +298,7 @@ public sealed partial class ModItemViewModel : ObservableObject
                 if (dep.Problem == DependencyProblem.Disabled && _owner.FindMod(dep.ModId) is { } target)
                     target.IsEnabled = true;
                 else if (dep.Problem == DependencyProblem.Missing)
-                    await _owner.InstallDependencyAsync(dep.ModId);
+                    await _owner.InstallModAsync(dep.ModId);
             }
         }
         finally

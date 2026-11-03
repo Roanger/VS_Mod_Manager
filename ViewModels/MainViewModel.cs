@@ -13,6 +13,18 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ModDbClient _client = new();
     private readonly IconCache _icons;
 
+    public BrowseViewModel Browse { get; }
+
+    /// <summary>0 = Installed, 1 = Browse.</summary>
+    [ObservableProperty] private int _selectedTab;
+
+    partial void OnSelectedTabChanged(int value)
+    {
+        if (value != 1) return;
+        _ = Browse.EnsureLoadedAsync();
+        Browse.RefreshInstalled();
+    }
+
     public GamePaths Paths { get; private set; }
     public ModUpdater Updater { get; private set; }
     public ClientSettings Settings { get; private set; }
@@ -100,6 +112,7 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel()
     {
         _icons = new IconCache(_client);
+        Browse = new BrowseViewModel(this, _client, _icons);
         Paths = new GamePaths(AppSettings.Load());
         Updater = new ModUpdater(Paths, _client);
         Settings = new ClientSettings(Paths);
@@ -427,29 +440,30 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Installs the latest compatible release of a missing dependency, then
-    /// recursively installs anything that mod itself is missing.
+    /// Installs the latest compatible release of a mod from the ModDB, then
+    /// recursively installs anything that mod is missing. Used both for
+    /// dependencies and for the Browse tab. Returns false if nothing was installed.
     /// </summary>
-    public async Task InstallDependencyAsync(string modId)
+    public async Task<bool> InstallModAsync(string modId)
     {
         if (FindMod(modId) is not null)
-            return;
+            return true;
 
         try
         {
-            StatusMessage = $"Installing dependency {modId}…";
+            StatusMessage = $"Installing {modId}…";
             var remote = await _client.GetModAsync(modId);
             if (remote is null)
             {
-                StatusMessage = $"Dependency {modId} isn't on the ModDB; install it manually.";
-                return;
+                StatusMessage = $"{modId} isn't on the ModDB; install it manually.";
+                return false;
             }
 
             var release = remote.LatestCompatible(Paths.GameVersion);
             if (release is null)
             {
                 StatusMessage = $"{remote.Name} has no release for {GameVersionText}.";
-                return;
+                return false;
             }
 
             var target = await Updater.InstallAsync(release, []);
@@ -463,11 +477,13 @@ public sealed partial class MainViewModel : ObservableObject
             StatusMessage = $"Installed {remote.Name} {release.ModVersion}.";
 
             foreach (var sub in item.DependencyIssues.Where(d => d.Problem == DependencyProblem.Missing).ToList())
-                await InstallDependencyAsync(sub.ModId);
+                await InstallModAsync(sub.ModId);
+            return true;
         }
         catch (Exception ex)
         {
             StatusMessage = $"Couldn't install {modId}: {ex.Message}";
+            return false;
         }
     }
 
