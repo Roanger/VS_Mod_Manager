@@ -1,0 +1,64 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VSModManager.ViewModels"
+        x:Class="VSModManager.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Settings"
+        Width="680" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="Foreground" Value="Gray" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.check">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Margin" Value="0,4,0,0" />
+      <Setter Property="Foreground" Value="IndianRed" />
+    </Style>
+    <Style Selector="TextBlock.check.ok">
+      <Setter Property="Foreground" Value="MediumSeaGreen" />
+    </Style>
+    <Style Selector="TextBlock.check.warn">
+      <Setter Property="Foreground" Value="Orange" />
+    </Style>
+  </Window.Styles>
+
+  <StackPanel Margin="20" Spacing="18">
+    <StackPanel>
+      <TextBlock Classes="label" Text="Game install folder" />
+      <TextBlock Classes="hint" Text="The folder containing Vintagestory.exe." />
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBox Text="{Binding InstallDir}" />
+        <Button Grid.Column="1" Content="Browse…" Margin="8,0,0,0" Click="BrowseInstall_Click" />
+      </Grid>
+      <TextBlock Classes="check" Classes.ok="{Binding InstallOk}" Text="{Binding InstallMessage}" />
+    </StackPanel>
+
+    <StackPanel>
+      <TextBlock Classes="label" Text="Data folder" />
+      <TextBlock Classes="hint" Text="Where your Mods folder and clientsettings.json live. Only change this if you launch the game with --dataPath." />
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBox Text="{Binding DataDir}" />
+        <Button Grid.Column="1" Content="Browse…" Margin="8,0,0,0" Click="BrowseData_Click" />
+      </Grid>
+      <TextBlock Classes="check" Classes.ok="{Binding DataOk}" Classes.warn="{Binding DataWarning}"
+                 Text="{Binding DataMessage}" />
+    </StackPanel>
+
+    <Grid ColumnDefinitions="Auto,*,Auto">
+      <Button Content="Reset to Defaults" Command="{Binding ResetDefaultsCommand}" />
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+        <Button Content="Cancel" Command="{Binding CancelCommand}" />
+        <Button Content="Save" Classes="accent" Command="{Binding SaveCommand}" />
+      </StackPanel>
+    </Grid>
+  </StackPanel>
+</Window>

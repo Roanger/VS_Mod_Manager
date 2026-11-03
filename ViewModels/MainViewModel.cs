@@ -12,9 +12,9 @@ public sealed partial class MainViewModel : ObservableObject
 
     private readonly ModDbClient _client = new();
 
-    public GamePaths Paths { get; } = new();
-    public ModUpdater Updater { get; }
-    public ClientSettings Settings { get; }
+    public GamePaths Paths { get; private set; }
+    public ModUpdater Updater { get; private set; }
+    public ClientSettings Settings { get; private set; }
     public ObservableCollection<ModItemViewModel> Mods { get; } = [];
 
     [ObservableProperty]
@@ -62,6 +62,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public MainViewModel()
     {
+        Paths = new GamePaths(AppSettings.Load());
         Updater = new ModUpdater(Paths, _client);
         Settings = new ClientSettings(Paths);
 
@@ -90,6 +91,31 @@ public sealed partial class MainViewModel : ObservableObject
         // The game may have changed mods or disabledMods while open.
         else if (RefreshCommand.CanExecute(null))
             RefreshCommand.Execute(null);
+    }
+
+    /// <summary>Saves new folder settings and reloads everything against them.</summary>
+    public async Task ApplySettingsAsync(AppSettings settings)
+    {
+        try
+        {
+            settings.Save();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Couldn't save settings: " + ex.Message;
+            return;
+        }
+
+        Paths = new GamePaths(settings);
+        Updater = new ModUpdater(Paths, _client);
+        Settings = new ClientSettings(Paths);
+        OnPropertyChanged(nameof(GameVersionText));
+        OnPropertyChanged(nameof(ModsDir));
+
+        if (RefreshCommand.CanExecute(null))
+            await RefreshCommand.ExecuteAsync(null);
+        else
+            StatusMessage = "Settings saved. Click Refresh once the current scan finishes.";
     }
 
     private bool CanPlay => !IsGameRunning;
@@ -157,6 +183,8 @@ public sealed partial class MainViewModel : ObservableObject
                 : $"{Mods.Count} mods, {UpdatesAvailable} update(s) available.";
             if (DependencyIssueCount > 0)
                 StatusMessage += $" {DependencyIssueCount} mod(s) have dependency problems.";
+            if (Paths.GameVersion is null)
+                StatusMessage = $"Vintage Story wasn't found in {Paths.InstallDir}. Open Settings to choose its folder.";
         }
         catch (Exception ex)
         {

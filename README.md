@@ -19,7 +19,7 @@ A desktop mod manager for [Vintage Story](https://www.vintagestory.at/), in the 
 
 Grab `VSModManager.exe` from the [Releases](https://github.com/Roanger/VS_Mod_Manager/releases) page and run it. It's a single self-contained file; no .NET install needed.
 
-> Windows only for now. Avalonia is cross-platform, but game paths are currently Windows defaults.
+> Windows only for now. Avalonia is cross-platform, but the default paths and game detection assume Windows.
 
 ## Building from source
 
@@ -46,6 +46,9 @@ dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=
 | Enabled/disabled state | `disabledMods` in `%AppData%\VintagestoryData\clientsettings.json` |
 | Backups of replaced mods and settings | `%AppData%\VintagestoryData\ModManagerBackups` |
 | Profiles | `%AppData%\VSModManager\profiles.json` |
+| Manager settings (custom folders) | `%AppData%\VSModManager\settings.json` |
+
+The game and data folders above are the defaults. If you installed the game elsewhere or launch it with `--dataPath`, set your folders under **⚙ Settings**.
 
 **Compatibility:** a release counts as compatible if it's tagged for your game's major.minor version (any `1.22.x` for game 1.22.7). ModDB tags rarely list every patch version, so an exact match would miss most mods.
 
@@ -55,7 +58,6 @@ dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=
 
 ## Limitations
 
-- Paths are fixed to the default install locations; custom install folders aren't supported yet.
 - Mods distributed as loose `.dll`/`.cs` files (no `modinfo.json`) are listed but can't be update-checked or toggled.
 - The ModDB API doesn't expose a release's dependencies before download, so a dependency added by an update is flagged right after updating rather than before.
 

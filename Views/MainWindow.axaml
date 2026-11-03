@@ -33,6 +33,7 @@
           <Button Content="Open Mods Folder" Command="{Binding OpenModsFolderCommand}" />
           <Button Content="Backups" Command="{Binding OpenBackupsFolderCommand}" />
           <Button Content="Refresh" Command="{Binding RefreshCommand}" />
+          <Button Content="⚙ Settings" Click="Settings_Click" />
           <Button Classes="accent" Command="{Binding UpdateAllCommand}">
             <TextBlock>
               <Run Text="Update All (" /><Run Text="{Binding UpdatesAvailable}" /><Run Text=")" />
