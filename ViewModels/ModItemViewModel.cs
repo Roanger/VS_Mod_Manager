@@ -32,7 +32,7 @@ public sealed partial class ModItemViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Primary), nameof(Name), nameof(InstalledVersion), nameof(IsDuplicate), nameof(FileNames), nameof(DuplicateText))]
+    [NotifyPropertyChangedFor(nameof(Primary), nameof(Name), nameof(InstalledVersion), nameof(IsDuplicate), nameof(FileNames), nameof(DuplicateText), nameof(HasChangelog), nameof(ChangelogText))]
     private List<InstalledMod> _files;
 
     [ObservableProperty]
@@ -40,8 +40,12 @@ public sealed partial class ModItemViewModel : ObservableObject
     private ModDbMod? _remote;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(LatestVersion))]
+    [NotifyPropertyChangedFor(nameof(LatestVersion), nameof(HasChangelog), nameof(ChangelogText))]
     private ModDbRelease? _latest;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ChangelogButtonText))]
+    private bool _isChangelogOpen;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StatusText), nameof(StatusBrush), nameof(CanUpdate))]
@@ -98,6 +102,27 @@ public sealed partial class ModItemViewModel : ObservableObject
     public bool HasDependencyIssues => DependencyIssues.Count > 0;
     public bool HasFixableDependencies => DependencyIssues.Any(d => d.Problem is DependencyProblem.Missing or DependencyProblem.Disabled);
     public string DependencyText => string.Join("\n", DependencyIssues.Select(d => d.Describe()));
+
+    /// <summary>Releases after the installed version, up to the latest compatible one, newest first.</summary>
+    private List<ModDbRelease> NewerReleases =>
+        Remote is null || Latest?.Version is not { } latest
+            ? []
+            : Remote.Releases
+                .Where(r => r.Version is { } v
+                         && v.CompareTo(latest) <= 0
+                         && (Primary.SemVersion is not { } have || v.CompareTo(have) > 0))
+                .OrderByDescending(r => r.Version)
+                .ToList();
+
+    public bool HasChangelog => NewerReleases.Count > 0;
+    public string ChangelogButtonText => IsChangelogOpen ? "Hide" : "What's New";
+
+    public string ChangelogText => string.Join("\n\n", NewerReleases.Select(r =>
+    {
+        var date = r.Created?.Split(' ')[0];
+        var notes = HtmlText.ToPlainText(r.Changelog);
+        return $"{r.ModVersion}  ({date})\n{(notes.Length > 0 ? notes : "No changelog provided.")}";
+    }));
 
     public string StatusText => Status switch
     {
@@ -165,6 +190,7 @@ public sealed partial class ModItemViewModel : ObservableObject
             var installed = ModScanner.ReadZip(target);
             Files = [installed];
             Status = ModStatus.Updated;
+            IsChangelogOpen = false;
 
             // disabledMods entries are version-specific ("healthbar@1.4.2"), so
             // without this a disabled mod would silently re-enable on update.
@@ -233,6 +259,9 @@ public sealed partial class ModItemViewModel : ObservableObject
             IsInstallingDependencies = false;
         }
     }
+
+    [RelayCommand]
+    private void ToggleChangelog() => IsChangelogOpen = !IsChangelogOpen;
 
     [RelayCommand]
     private void OpenPage()

@@ -85,7 +85,8 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ModItemViewModel">
             <Border Classes="row">
-              <Grid ColumnDefinitions="44,*,100,100,220,290">
+             <StackPanel>
+              <Grid ColumnDefinitions="44,*,100,100,220,300">
                 <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"
                           ToolTip.Tip="Enable or disable this mod (same list as the in-game mod screen)" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" ToolTip.Tip="{Binding FileNames}"
@@ -103,19 +104,30 @@
                            Opacity="{Binding RowOpacity}" />
                 <TextBlock Grid.Column="4" Opacity="{Binding RowOpacity}" Text="{Binding StatusText}" Foreground="{Binding StatusBrush}"
                            VerticalAlignment="Center" TextWrapping="Wrap" />
-                <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="6"
-                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                <WrapPanel Grid.Column="5" HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <WrapPanel.Styles>
+                    <Style Selector="Button"><Setter Property="Margin" Value="3" /></Style>
+                  </WrapPanel.Styles>
                   <Button Content="Fix Dependencies" Command="{Binding FixDependenciesCommand}"
                           IsVisible="{Binding HasFixableDependencies}"
                           IsEnabled="{Binding !IsInstallingDependencies}" />
                   <Button Content="Fix Duplicates" Command="{Binding RemoveDuplicatesCommand}"
                           IsVisible="{Binding IsDuplicate}" />
+                  <Button Content="{Binding ChangelogButtonText}" Command="{Binding ToggleChangelogCommand}"
+                          IsVisible="{Binding HasChangelog}" />
                   <Button Content="Page" Command="{Binding OpenPageCommand}"
                           IsVisible="{Binding HasPage}" />
                   <Button Content="Update" Classes="accent" Command="{Binding UpdateCommand}"
                           IsVisible="{Binding CanUpdate}" />
-                </StackPanel>
+                </WrapPanel>
               </Grid>
+              <Border IsVisible="{Binding IsChangelogOpen}" Margin="44,8,0,4" Padding="12,10"
+                      Background="#14FFFFFF" CornerRadius="6" MaxHeight="320">
+                <ScrollViewer>
+                  <SelectableTextBlock Text="{Binding ChangelogText}" TextWrapping="Wrap" FontSize="13" />
+                </ScrollViewer>
+              </Border>
+             </StackPanel>
             </Border>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
