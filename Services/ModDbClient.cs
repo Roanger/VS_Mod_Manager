@@ -82,7 +82,7 @@ public sealed class ModDbClient : IDisposable
     {
         var handler = new HttpClientHandler { AutomaticDecompression = System.Net.DecompressionMethods.All };
         _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(60) };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("VSModManager/0.1");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("VSModManager/0.2");
     }
 
     /// <summary>

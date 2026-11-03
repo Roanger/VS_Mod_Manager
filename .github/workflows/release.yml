@@ -1,0 +1,64 @@
+name: Build release
+
+# Push a tag like v0.2.0 to build Windows + Linux downloads and attach them to a
+# draft GitHub release. "Run workflow" on the Actions tab builds without releasing.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Publish single-file exe
+        run: >
+          dotnet publish VSModManager.csproj -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true -p:DebugType=none -o dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/VSModManager.exe
+
+  linux:
+    # Older Ubuntu = older glibc, so the build runs on more distros.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Build AppImage and tar.gz
+        run: bash packaging/linux/build-appimage.sh "${GITHUB_REF_NAME}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            dist/VSModManager-x86_64.AppImage
+            dist/VSModManager-linux-x64.tar.gz
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Attach files to a draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            dist/VSModManager.exe
+            dist/VSModManager-x86_64.AppImage
+            dist/VSModManager-linux-x64.tar.gz

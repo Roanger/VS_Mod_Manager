@@ -174,9 +174,9 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanPlay))]
     private void Play()
     {
-        if (!File.Exists(Paths.ExePath))
+        if (!Paths.CanLaunch)
         {
-            StatusMessage = $"Couldn't find {Paths.ExePath}.";
+            StatusMessage = $"Couldn't find the game in {Paths.InstallDir}. Check ⚙ Settings.";
             return;
         }
 

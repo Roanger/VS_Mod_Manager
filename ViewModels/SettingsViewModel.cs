@@ -58,10 +58,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanSave))]
     private void Save()
     {
-        // Store defaults as null so they keep following %AppData%.
-        static string? OrNull(string path, string def) =>
-            string.Equals(Path.GetFullPath(path).TrimEnd('\\'), def.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)
-                ? null : Path.GetFullPath(path);
+        // Store defaults as null so they keep following auto-detection.
+        static string? OrNull(string path, string def)
+        {
+            var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+            var cmp = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            return string.Equals(full, Path.TrimEndingDirectorySeparator(def), cmp) ? null : full;
+        }
 
         Result = new AppSettings
         {

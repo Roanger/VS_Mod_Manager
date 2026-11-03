@@ -22,9 +22,17 @@ A desktop mod manager for [Vintage Story](https://www.vintagestory.at/), in the 
 
 ## Download
 
-Grab `VSModManager.exe` from the [Releases](https://github.com/Roanger/VS_Mod_Manager/releases) page and run it. It's a single self-contained file; no .NET install needed.
+Get the latest version from the [Releases](https://github.com/Roanger/VS_Mod_Manager/releases) page. Every download is self-contained, so you don't need to install .NET.
 
-> Windows only for now. Avalonia is cross-platform, but the default paths and game detection assume Windows.
+| Platform | File | How to run |
+|---|---|---|
+| Windows | `VSModManager.exe` | Double-click it. |
+| Linux | `VSModManager-x86_64.AppImage` | `chmod +x VSModManager-x86_64.AppImage`, then run it. |
+| Linux (no FUSE) | `VSModManager-linux-x64.tar.gz` | Extract it and run `./VSModManager`. |
+
+If an AppImage won't start because of a `libfuse.so.2` error, install your distro's `fuse2` / `libfuse2` package or use the tar.gz.
+
+On Linux, the manager finds the game in the usual install locations (`/opt/vintagestory`, `~/.local/share/vintagestory`, a `.desktop` launcher, or the Flathub Flatpak). If it finds the wrong folder or none, set it under **⚙ Settings**.
 
 ## Building from source
 
@@ -36,22 +44,31 @@ cd VS_Mod_Manager
 dotnet run
 ```
 
-To build a single-file exe into `publish/`:
+To build a single-file Windows exe into `publish/`:
 
 ```sh
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
 ```
 
+To build the Linux AppImage and tar.gz into `dist/` (run this on Linux):
+
+```sh
+bash packaging/linux/build-appimage.sh
+```
+
+Pushing a `v*` tag runs the [release workflow](.github/workflows/release.yml), which builds all three downloads and attaches them to a draft GitHub release.
+
 ## How it works
 
-| What | Where |
-|---|---|
-| Game install (version detected from `Vintagestory.exe`) | `%AppData%\Vintagestory` |
-| Your mods | `%AppData%\VintagestoryData\Mods` |
-| Enabled/disabled state | `disabledMods` in `%AppData%\VintagestoryData\clientsettings.json` |
-| Backups of replaced mods and settings | `%AppData%\VintagestoryData\ModManagerBackups` |
-| Profiles | `%AppData%\VSModManager\profiles.json` |
-| Manager settings (custom folders) | `%AppData%\VSModManager\settings.json` |
+| What | Windows | Linux |
+|---|---|---|
+| Game install (version read from `Vintagestory.dll`) | `%AppData%\Vintagestory` | auto-detected (see above) |
+| Your mods | `%AppData%\VintagestoryData\Mods` | `~/.config/VintagestoryData/Mods` |
+| Enabled/disabled state | `disabledMods` in `VintagestoryData\clientsettings.json` | same, in `~/.config/VintagestoryData` |
+| Backups of replaced mods and settings | `VintagestoryData\ModManagerBackups` | `~/.config/VintagestoryData/ModManagerBackups` |
+| Profiles and manager settings | `%AppData%\VSModManager` | `~/.config/VSModManager` |
+
+For the Flatpak version of the game, the data folder is `~/.var/app/at.vintagestory.VintageStory/config/VintagestoryData`. The manager uses it when it's the only one present, and **Play** runs `flatpak run at.vintagestory.VintageStory`.
 
 The game and data folders above are the defaults. If you installed the game elsewhere or launch it with `--dataPath`, set your folders under **⚙ Settings**.
 

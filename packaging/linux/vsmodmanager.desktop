@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=VS Mod Manager
+Comment=Update, enable and install Vintage Story mods
+Exec=VSModManager
+Icon=vsmodmanager
+Terminal=false
+Categories=Game;Utility;
+Keywords=Vintage Story;mods;modding;
+StartupWMClass=VSModManager

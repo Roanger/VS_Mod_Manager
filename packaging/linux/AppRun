@@ -1,0 +1,4 @@
+#!/bin/sh
+# AppImage entry point: run the bundled self-contained build.
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/usr/lib/vsmodmanager/VSModManager" "$@"

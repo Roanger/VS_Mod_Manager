@@ -4,6 +4,7 @@
         x:Class="VSModManager.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         Title="Settings"
+        Icon="avares://VSModManager/Assets/icon.png"
         Width="680" SizeToContent="Height" CanResize="False"
         WindowStartupLocation="CenterOwner">
 
@@ -34,7 +35,7 @@
   <StackPanel Margin="20" Spacing="18">
     <StackPanel>
       <TextBlock Classes="label" Text="Game install folder" />
-      <TextBlock Classes="hint" Text="The folder containing Vintagestory.exe." />
+      <TextBlock Classes="hint" Text="The folder containing Vintagestory.exe (Windows) or Vintagestory.dll (Linux)." />
       <Grid ColumnDefinitions="*,Auto">
         <TextBox Text="{Binding InstallDir}" />
         <Button Grid.Column="1" Content="Browse…" Margin="8,0,0,0" Click="BrowseInstall_Click" />
