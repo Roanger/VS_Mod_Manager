@@ -51,6 +51,13 @@ public sealed partial class ModItemViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(StatusText))]
     private string? _errorMessage;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDependencyIssues), nameof(HasMissingDependencies), nameof(DependencyText))]
+    private List<DependencyIssue> _dependencyIssues = [];
+
+    [ObservableProperty]
+    private bool _isInstallingDependencies;
+
     public InstalledMod Primary => Files[0];
     public string? ModId => Primary.ModId;
     public string Name => Remote?.Name ?? Primary.Name;
@@ -61,6 +68,9 @@ public sealed partial class ModItemViewModel : ObservableObject
     public string FileNames => string.Join("\n", Files.Select(f => f.FileName));
     public bool HasPage => Remote is not null;
     public bool CanUpdate => Status == ModStatus.UpdateAvailable;
+    public bool HasDependencyIssues => DependencyIssues.Count > 0;
+    public bool HasMissingDependencies => DependencyIssues.Any(d => d.Problem == DependencyProblem.Missing);
+    public string DependencyText => string.Join("\n", DependencyIssues.Select(d => d.Describe()));
 
     public string StatusText => Status switch
     {
@@ -133,6 +143,7 @@ public sealed partial class ModItemViewModel : ObservableObject
             Status = ModStatus.Error;
         }
         _owner.OnItemChanged();
+        _owner.RecheckDependencies();
     }
 
     /// <summary>Moves every copy except the highest version into the backup folder.</summary>
@@ -157,6 +168,22 @@ public sealed partial class ModItemViewModel : ObservableObject
             _owner.StatusMessage = $"Couldn't remove duplicates of {Name}: {ex.Message}";
         }
         _owner.OnItemChanged();
+        _owner.RecheckDependencies();
+    }
+
+    [RelayCommand]
+    private async Task InstallMissingDependenciesAsync()
+    {
+        IsInstallingDependencies = true;
+        try
+        {
+            foreach (var dep in DependencyIssues.Where(d => d.Problem == DependencyProblem.Missing).ToList())
+                await _owner.InstallDependencyAsync(dep.ModId);
+        }
+        finally
+        {
+            IsInstallingDependencies = false;
+        }
     }
 
     [RelayCommand]

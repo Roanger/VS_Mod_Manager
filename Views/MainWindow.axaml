@@ -73,6 +73,8 @@
                   <TextBlock Text="{Binding ModId}" Foreground="Gray" FontSize="12" />
                   <TextBlock Text="{Binding DuplicateText}" Foreground="Orange" FontSize="12"
                              IsVisible="{Binding IsDuplicate}" />
+                  <TextBlock Text="{Binding DependencyText}" Foreground="IndianRed" FontSize="12"
+                             TextWrapping="Wrap" IsVisible="{Binding HasDependencyIssues}" />
                 </StackPanel>
                 <TextBlock Grid.Column="1" Text="{Binding InstalledVersion}" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="2" Text="{Binding LatestVersion}" VerticalAlignment="Center" />
@@ -80,6 +82,9 @@
                            VerticalAlignment="Center" TextWrapping="Wrap" />
                 <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6"
                             HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <Button Content="Install Missing" Command="{Binding InstallMissingDependenciesCommand}"
+                          IsVisible="{Binding HasMissingDependencies}"
+                          IsEnabled="{Binding !IsInstallingDependencies}" />
                   <Button Content="Fix Duplicates" Command="{Binding RemoveDuplicatesCommand}"
                           IsVisible="{Binding IsDuplicate}" />
                   <Button Content="Page" Command="{Binding OpenPageCommand}"
