@@ -52,8 +52,35 @@ public sealed partial class ModItemViewModel : ObservableObject
     private string? _errorMessage;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasDependencyIssues), nameof(HasMissingDependencies), nameof(DependencyText))]
+    [NotifyPropertyChangedFor(nameof(HasDependencyIssues), nameof(HasFixableDependencies), nameof(DependencyText))]
     private List<DependencyIssue> _dependencyIssues = [];
+
+    private bool _isEnabled = true;
+
+    /// <summary>Bound two-way to the row's checkbox; writes clientsettings.json.</summary>
+    public bool IsEnabled
+    {
+        get => _isEnabled;
+        set
+        {
+            if (value == _isEnabled) return;
+            if (_owner.TrySetEnabled(this, value))
+                SetEnabledSilently(value);
+            else
+                // Refused (e.g. game running): bounce the checkbox back.
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(IsEnabled)));
+        }
+    }
+
+    /// <summary>Updates the flag without touching clientsettings.json.</summary>
+    public void SetEnabledSilently(bool value)
+    {
+        _isEnabled = value;
+        OnPropertyChanged(nameof(IsEnabled));
+        OnPropertyChanged(nameof(RowOpacity));
+    }
+
+    public double RowOpacity => IsEnabled ? 1.0 : 0.5;
 
     [ObservableProperty]
     private bool _isInstallingDependencies;
@@ -69,7 +96,7 @@ public sealed partial class ModItemViewModel : ObservableObject
     public bool HasPage => Remote is not null;
     public bool CanUpdate => Status == ModStatus.UpdateAvailable;
     public bool HasDependencyIssues => DependencyIssues.Count > 0;
-    public bool HasMissingDependencies => DependencyIssues.Any(d => d.Problem == DependencyProblem.Missing);
+    public bool HasFixableDependencies => DependencyIssues.Any(d => d.Problem is DependencyProblem.Missing or DependencyProblem.Disabled);
     public string DependencyText => string.Join("\n", DependencyIssues.Select(d => d.Describe()));
 
     public string StatusText => Status switch
@@ -133,9 +160,22 @@ public sealed partial class ModItemViewModel : ObservableObject
         Status = ModStatus.Updating;
         try
         {
-            var target = await _owner.Updater.InstallAsync(Latest, Files);
-            Files = [ModScanner.ReadZip(target)];
+            var oldFiles = Files;
+            var target = await _owner.Updater.InstallAsync(Latest, oldFiles);
+            var installed = ModScanner.ReadZip(target);
+            Files = [installed];
             Status = ModStatus.Updated;
+
+            // disabledMods entries are version-specific ("healthbar@1.4.2"), so
+            // without this a disabled mod would silently re-enable on update.
+            try
+            {
+                _owner.Settings.Replace(oldFiles, installed, keepDisabled: !IsEnabled);
+            }
+            catch (Exception ex)
+            {
+                _owner.StatusMessage = $"Updated {Name}, but couldn't update disabled-mod list: {ex.Message}";
+            }
         }
         catch (Exception ex)
         {
@@ -158,9 +198,11 @@ public sealed partial class ModItemViewModel : ObservableObject
 
         try
         {
-            foreach (var extra in Files.Skip(1))
+            var extras = Files.Skip(1).ToList();
+            foreach (var extra in extras)
                 _owner.Updater.Backup(extra.Path);
             Files = [Primary];
+            _owner.Settings.Replace(extras, null, keepDisabled: false);
             _owner.StatusMessage = $"Removed older copies of {Name} (moved to backups).";
         }
         catch (Exception ex)
@@ -171,14 +213,20 @@ public sealed partial class ModItemViewModel : ObservableObject
         _owner.RecheckDependencies();
     }
 
+    /// <summary>Enables disabled dependencies and installs missing ones.</summary>
     [RelayCommand]
-    private async Task InstallMissingDependenciesAsync()
+    private async Task FixDependenciesAsync()
     {
         IsInstallingDependencies = true;
         try
         {
-            foreach (var dep in DependencyIssues.Where(d => d.Problem == DependencyProblem.Missing).ToList())
-                await _owner.InstallDependencyAsync(dep.ModId);
+            foreach (var dep in DependencyIssues.ToList())
+            {
+                if (dep.Problem == DependencyProblem.Disabled && _owner.FindMod(dep.ModId) is { } target)
+                    target.IsEnabled = true;
+                else if (dep.Problem == DependencyProblem.Missing)
+                    await _owner.InstallDependencyAsync(dep.ModId);
+            }
         }
         finally
         {

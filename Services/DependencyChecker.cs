@@ -3,6 +3,7 @@ namespace VSModManager.Services;
 public enum DependencyProblem
 {
     Missing,
+    Disabled,
     TooOld,
     GameTooOld,
 }
@@ -19,6 +20,7 @@ public sealed record DependencyIssue(
         return Problem switch
         {
             DependencyProblem.Missing => $"Missing {ModId}{req}",
+            DependencyProblem.Disabled => $"Needs {ModId}, which is disabled",
             DependencyProblem.TooOld => $"Needs {ModId}{req} (have {InstalledVersion})",
             DependencyProblem.GameTooOld => $"Needs game{req} (have {InstalledVersion})",
             _ => ModId,
@@ -36,10 +38,12 @@ public static class DependencyChecker
     private static readonly HashSet<string> BuiltIn =
         new(StringComparer.OrdinalIgnoreCase) { "game", "survival", "creative", "essentials" };
 
-    /// <param name="installed">Highest installed version per modid.</param>
+    /// <param name="installed">Highest installed version per modid, enabled or not.</param>
+    /// <param name="disabled">Modids the game won't load; they can't satisfy a dependency.</param>
     public static List<DependencyIssue> Check(
         InstalledMod mod,
         IReadOnlyDictionary<string, InstalledMod> installed,
+        IReadOnlySet<string> disabled,
         SemVer? gameVersion)
     {
         var issues = new List<DependencyIssue>();
@@ -58,6 +62,12 @@ public static class DependencyChecker
             if (!installed.TryGetValue(depId, out var dep))
             {
                 issues.Add(new(depId.ToLowerInvariant(), versionText, null, DependencyProblem.Missing));
+                continue;
+            }
+
+            if (disabled.Contains(dep.ModId!))
+            {
+                issues.Add(new(dep.ModId!, versionText, dep.Version, DependencyProblem.Disabled));
                 continue;
             }
 

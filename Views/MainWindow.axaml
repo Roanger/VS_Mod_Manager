@@ -53,11 +53,12 @@
 
     <!-- Column headers -->
     <Border DockPanel.Dock="Top" Classes="row">
-      <Grid ColumnDefinitions="*,100,100,220,290">
-        <TextBlock Classes="header" Text="Mod" />
-        <TextBlock Classes="header" Grid.Column="1" Text="Installed" />
-        <TextBlock Classes="header" Grid.Column="2" Text="Latest" />
-        <TextBlock Classes="header" Grid.Column="3" Text="Status" />
+      <Grid ColumnDefinitions="44,*,100,100,220,290">
+        <TextBlock Classes="header" Text="On" />
+        <TextBlock Classes="header" Grid.Column="1" Text="Mod" />
+        <TextBlock Classes="header" Grid.Column="2" Text="Installed" />
+        <TextBlock Classes="header" Grid.Column="3" Text="Latest" />
+        <TextBlock Classes="header" Grid.Column="4" Text="Status" />
       </Grid>
     </Border>
 
@@ -67,8 +68,11 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ModItemViewModel">
             <Border Classes="row">
-              <Grid ColumnDefinitions="*,100,100,220,290">
-                <StackPanel VerticalAlignment="Center" ToolTip.Tip="{Binding FileNames}">
+              <Grid ColumnDefinitions="44,*,100,100,220,290">
+                <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"
+                          ToolTip.Tip="Enable or disable this mod (same list as the in-game mod screen)" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" ToolTip.Tip="{Binding FileNames}"
+                            Opacity="{Binding RowOpacity}">
                   <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                   <TextBlock Text="{Binding ModId}" Foreground="Gray" FontSize="12" />
                   <TextBlock Text="{Binding DuplicateText}" Foreground="Orange" FontSize="12"
@@ -76,14 +80,16 @@
                   <TextBlock Text="{Binding DependencyText}" Foreground="IndianRed" FontSize="12"
                              TextWrapping="Wrap" IsVisible="{Binding HasDependencyIssues}" />
                 </StackPanel>
-                <TextBlock Grid.Column="1" Text="{Binding InstalledVersion}" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="2" Text="{Binding LatestVersion}" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="3" Text="{Binding StatusText}" Foreground="{Binding StatusBrush}"
+                <TextBlock Grid.Column="2" Text="{Binding InstalledVersion}" VerticalAlignment="Center"
+                           Opacity="{Binding RowOpacity}" />
+                <TextBlock Grid.Column="3" Text="{Binding LatestVersion}" VerticalAlignment="Center"
+                           Opacity="{Binding RowOpacity}" />
+                <TextBlock Grid.Column="4" Opacity="{Binding RowOpacity}" Text="{Binding StatusText}" Foreground="{Binding StatusBrush}"
                            VerticalAlignment="Center" TextWrapping="Wrap" />
-                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6"
+                <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="6"
                             HorizontalAlignment="Right" VerticalAlignment="Center">
-                  <Button Content="Install Missing" Command="{Binding InstallMissingDependenciesCommand}"
-                          IsVisible="{Binding HasMissingDependencies}"
+                  <Button Content="Fix Dependencies" Command="{Binding FixDependenciesCommand}"
+                          IsVisible="{Binding HasFixableDependencies}"
                           IsEnabled="{Binding !IsInstallingDependencies}" />
                   <Button Content="Fix Duplicates" Command="{Binding RemoveDuplicatesCommand}"
                           IsVisible="{Binding IsDuplicate}" />

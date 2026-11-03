@@ -14,6 +14,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public GamePaths Paths { get; } = new();
     public ModUpdater Updater { get; }
+    public ClientSettings Settings { get; }
     public ObservableCollection<ModItemViewModel> Mods { get; } = [];
 
     [ObservableProperty]
@@ -33,6 +34,7 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel()
     {
         Updater = new ModUpdater(Paths, _client);
+        Settings = new ClientSettings(Paths);
     }
 
     public Task InitializeAsync() => RefreshAsync();
@@ -53,8 +55,12 @@ public sealed partial class MainViewModel : ObservableObject
                 .GroupBy(m => m.ModId ?? "\0" + m.Path)
                 .Select(g => new ModItemViewModel(this, g))
                 .OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase);
+            var disabled = Settings.LoadDisabled();
             foreach (var item in groups)
+            {
+                item.SetEnabledSilently(!ClientSettings.IsDisabled(item.Primary, disabled));
                 Mods.Add(item);
+            }
             RecheckDependencies();
 
             StatusMessage = $"Checking {Mods.Count} mods against the ModDB…";
@@ -136,14 +142,44 @@ public sealed partial class MainViewModel : ObservableObject
 
     public void RecheckDependencies()
     {
-        var installed = Mods
-            .Where(m => m.ModId is not null)
-            .ToDictionary(m => m.ModId!, m => m.Primary, StringComparer.OrdinalIgnoreCase);
+        var withId = Mods.Where(m => m.ModId is not null).ToList();
+        var installed = withId.ToDictionary(m => m.ModId!, m => m.Primary, StringComparer.OrdinalIgnoreCase);
+        var disabled = withId.Where(m => !m.IsEnabled).Select(m => m.ModId!).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // A disabled mod isn't loaded, so its own requirements don't matter.
         foreach (var item in Mods)
-            item.DependencyIssues = DependencyChecker.Check(item.Primary, installed, Paths.GameVersion);
+            item.DependencyIssues = item.IsEnabled
+                ? DependencyChecker.Check(item.Primary, installed, disabled, Paths.GameVersion)
+                : [];
 
         DependencyIssueCount = Mods.Count(m => m.HasDependencyIssues);
+    }
+
+    public ModItemViewModel? FindMod(string modId) =>
+        Mods.FirstOrDefault(m => string.Equals(m.ModId, modId, StringComparison.OrdinalIgnoreCase));
+
+    public bool TrySetEnabled(ModItemViewModel item, bool enabled)
+    {
+        if (item.ModId is null)
+        {
+            StatusMessage = $"{item.Name} has no modinfo.json, so the game can't enable or disable it.";
+            return false;
+        }
+
+        try
+        {
+            Settings.SetDisabled(item.Files, !enabled);
+            StatusMessage = $"{(enabled ? "Enabled" : "Disabled")} {item.Name}.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+            return false;
+        }
+
+        // Defer so the row's own flag is updated before dependencies are evaluated.
+        Avalonia.Threading.Dispatcher.UIThread.Post(RecheckDependencies);
+        return true;
     }
 
     /// <summary>
@@ -152,7 +188,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     public async Task InstallDependencyAsync(string modId)
     {
-        if (Mods.Any(m => string.Equals(m.ModId, modId, StringComparison.OrdinalIgnoreCase)))
+        if (FindMod(modId) is not null)
             return;
 
         try
