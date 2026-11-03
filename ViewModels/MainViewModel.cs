@@ -65,6 +65,15 @@ public sealed partial class MainViewModel : ObservableObject
         Updater = new ModUpdater(Paths, _client);
         Settings = new ClientSettings(Paths);
 
+        // Fill the dropdown before the window binds to it; repopulating it later
+        // leaves the ComboBox with no selection.
+        if (_profiles.Profiles.Count == 0)
+            _profiles.Profiles.Add(new Profile { Name = ProfileStore.DefaultName });
+        if (_profiles.ActiveProfile is null)
+            _profiles.Active = _profiles.Profiles[0].Name;
+        foreach (var p in _profiles.Profiles)
+            ProfileNames.Add(p.Name);
+
         IsGameRunning = GamePaths.IsGameRunning();
         _gameWatch.Tick += (_, _) => WatchGame();
         _gameWatch.Start();
@@ -131,7 +140,7 @@ public sealed partial class MainViewModel : ObservableObject
                 Mods.Add(item);
             }
             RecheckDependencies();
-            InitProfiles();
+            SyncActiveProfile();
 
             StatusMessage = $"Checking {Mods.Count} mods against the ModDB…";
             using var gate = new SemaphoreSlim(MaxParallelChecks);
@@ -259,25 +268,9 @@ public sealed partial class MainViewModel : ObservableObject
     private IEnumerable<ModItemViewModel> ToggleableMods => Mods.Where(m => m.ModId is not null);
 
     /// <summary>
-    /// On refresh: first run creates "Default" from the current state; afterwards the
-    /// active profile absorbs any changes made on the in-game mod screen.
+    /// Saves the current enabled/disabled state into the active profile. Runs on every
+    /// refresh too, so changes made on the in-game mod screen are absorbed.
     /// </summary>
-    private void InitProfiles()
-    {
-        if (_profiles.Profiles.Count == 0)
-            _profiles.Profiles.Add(new Profile { Name = ProfileStore.DefaultName });
-        if (_profiles.ActiveProfile is null)
-            _profiles.Active = _profiles.Profiles[0].Name;
-
-        ProfileNames.Clear();
-        foreach (var p in _profiles.Profiles)
-            ProfileNames.Add(p.Name);
-        OnPropertyChanged(nameof(SelectedProfile));
-
-        SyncActiveProfile();
-    }
-
-    /// <summary>Saves the current enabled/disabled state into the active profile.</summary>
     private void SyncActiveProfile()
     {
         if (_profiles.ActiveProfile is not { } active) return;
